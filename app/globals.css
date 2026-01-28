@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: #f9fafb;
+}
+
+/* Asegurar que los inputs tengan texto visible */
+input,
+textarea,
+select {
+  color: #111827 !important;
+  background-color: white !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Estilos para inputs con foco */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid #22c55e;
+  outline-offset: 2px;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
