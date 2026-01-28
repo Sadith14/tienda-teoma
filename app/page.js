@@ -7,7 +7,8 @@ import Link from 'next/link'
 export default function Home() {
   const [stats, setStats] = useState({
     totalProductos: 0,
-    totalMostrador: 0,
+    totalMostrador1: 0,
+    totalMostrador2: 0,
     totalAlmacen: 0,
     ventasHoy: 0,
     productosVencer: 0
@@ -37,13 +38,16 @@ export default function Home() {
         .eq('productos.activo', true)
         .gt('cantidad', 0)
 
-      let totalMostrador = 0
+      let totalMostrador1 = 0
+      let totalMostrador2 = 0
       let totalAlmacen = 0
 
       inventario?.forEach(lote => {
-        if (lote.ubicacion === 'mostrador') {
-          totalMostrador += lote.cantidad
-        } else {
+        if (lote.ubicacion === 'mostrador1') {
+          totalMostrador1 += lote.cantidad
+        } else if (lote.ubicacion === 'mostrador2') {
+          totalMostrador2 += lote.cantidad
+        } else if (lote.ubicacion === 'almacen') {
           totalAlmacen += lote.cantidad
         }
       })
@@ -74,7 +78,8 @@ export default function Home() {
 
       setStats({
         totalProductos: totalProductos || 0,
-        totalMostrador,
+        totalMostrador1,
+        totalMostrador2,
         totalAlmacen,
         ventasHoy: totalVentasHoy,
         productosVencer: proximosVencer?.length || 0
@@ -100,7 +105,7 @@ export default function Home() {
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
 
         {/* Tarjetas de estadísticas */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
           {/* Total Productos */}
           <div className="bg-white overflow-hidden shadow rounded-lg">
             <div className="p-5">
@@ -120,19 +125,38 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Inventario Mostrador */}
+          {/* Inventario Mostrador 1 */}
           <div className="bg-white overflow-hidden shadow rounded-lg">
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">En Mostrador</dt>
-                    <dd className="text-3xl font-semibold text-primary-600">{stats.totalMostrador}</dd>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Mostrador 1</dt>
+                    <dd className="text-3xl font-semibold text-green-600">{stats.totalMostrador1}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Inventario Mostrador 2 */}
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Mostrador 2</dt>
+                    <dd className="text-3xl font-semibold text-purple-600">{stats.totalMostrador2}</dd>
                   </dl>
                 </div>
               </div>
@@ -173,6 +197,51 @@ export default function Home() {
                     <dd className="text-3xl font-semibold text-green-600">S/ {stats.ventasHoy.toFixed(2)}</dd>
                   </dl>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Resumen visual adicional */}
+        <div className="mt-8 bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Distribución de Inventario</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-4xl font-bold text-green-600">{stats.totalMostrador1}</div>
+              <div className="text-sm text-gray-500 mt-1">unidades en Mostrador 1</div>
+              <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-green-500 h-2 rounded-full" 
+                  style={{ 
+                    width: `${(stats.totalMostrador1 / (stats.totalMostrador1 + stats.totalMostrador2 + stats.totalAlmacen)) * 100}%` 
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-4xl font-bold text-purple-600">{stats.totalMostrador2}</div>
+              <div className="text-sm text-gray-500 mt-1">unidades en Mostrador 2</div>
+              <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-purple-500 h-2 rounded-full" 
+                  style={{ 
+                    width: `${(stats.totalMostrador2 / (stats.totalMostrador1 + stats.totalMostrador2 + stats.totalAlmacen)) * 100}%` 
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-4xl font-bold text-blue-600">{stats.totalAlmacen}</div>
+              <div className="text-sm text-gray-500 mt-1">unidades en Almacén</div>
+              <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-500 h-2 rounded-full" 
+                  style={{ 
+                    width: `${(stats.totalAlmacen / (stats.totalMostrador1 + stats.totalMostrador2 + stats.totalAlmacen)) * 100}%` 
+                  }}
+                ></div>
               </div>
             </div>
           </div>
@@ -220,34 +289,34 @@ export default function Home() {
             </Link>
 
             <Link
-              href="/inventario"
+              href="/agregar-stock"
               className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-primary-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
             >
               <div className="flex-shrink-0">
                 <svg className="h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="absolute inset-0" aria-hidden="true" />
-                <p className="text-sm font-medium text-gray-900">Mover Inventario</p>
-                <p className="text-sm text-gray-500 truncate">Almacén ↔ Mostrador</p>
-              </div>
-            </Link>
-
-            <Link
-              href="/productos"
-              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-primary-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
-            >
-              <div className="flex-shrink-0">
-                <svg className="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
                 <span className="absolute inset-0" aria-hidden="true" />
-                <p className="text-sm font-medium text-gray-900">Agregar Producto</p>
-                <p className="text-sm text-gray-500 truncate">Nuevo producto</p>
+                <p className="text-sm font-medium text-gray-900">Agregar Stock</p>
+                <p className="text-sm text-gray-500 truncate">Nuevo inventario</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/inventario"
+              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-primary-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
+            >
+              <div className="flex-shrink-0">
+                <svg className="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="absolute inset-0" aria-hidden="true" />
+                <p className="text-sm font-medium text-gray-900">Ver Inventario</p>
+                <p className="text-sm text-gray-500 truncate">Consultar stock</p>
               </div>
             </Link>
           </div>
