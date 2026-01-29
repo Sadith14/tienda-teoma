@@ -8,10 +8,17 @@ export default function InventarioPage() {
   const [loading, setLoading] = useState(true)
   const [filtroUbicacion, setFiltroUbicacion] = useState('todos')
   const [expandidos, setExpandidos] = useState({})
+  
+  // Modal de traspaso
   const [mostrarTraspaso, setMostrarTraspaso] = useState(false)
   const [loteSeleccionado, setLoteSeleccionado] = useState(null)
   const [cantidadTraspaso, setCantidadTraspaso] = useState(0)
   const [ubicacionDestino, setUbicacionDestino] = useState('')
+  
+  // Modal de editar cantidad
+  const [mostrarEditarCantidad, setMostrarEditarCantidad] = useState(false)
+  const [loteEditar, setLoteEditar] = useState(null)
+  const [nuevaCantidad, setNuevaCantidad] = useState(0)
 
   useEffect(() => {
     cargarInventario()
@@ -92,6 +99,48 @@ export default function InventarioPage() {
       alert('✅ Traspaso realizado')
       setMostrarTraspaso(false)
       setLoteSeleccionado(null)
+      cargarInventario()
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error: ' + error.message)
+    }
+  }
+
+  async function guardarCantidad() {
+    if (!loteEditar || nuevaCantidad < 0) {
+      alert('Cantidad inválida')
+      return
+    }
+
+    try {
+      const diferencia = nuevaCantidad - loteEditar.cantidad
+
+      // Actualizar cantidad del lote
+      const { error: errorLote } = await supabase
+        .from('lotes')
+        .update({ cantidad: nuevaCantidad })
+        .eq('id', loteEditar.id)
+
+      if (errorLote) throw errorLote
+
+      // Registrar movimiento de ajuste
+      if (diferencia !== 0) {
+        await supabase
+          .from('movimientos')
+          .insert({
+            lote_id: loteEditar.id,
+            tipo: 'ajuste',
+            cantidad: Math.abs(diferencia),
+            ubicacion_destino: loteEditar.ubicacion,
+            notas: diferencia > 0 
+              ? `Ajuste: +${diferencia} unidades agregadas`
+              : `Ajuste: -${Math.abs(diferencia)} unidades removidas`
+          })
+      }
+
+      alert('✅ Cantidad actualizada')
+      setMostrarEditarCantidad(false)
+      setLoteEditar(null)
       cargarInventario()
     } catch (error) {
       console.error('Error:', error)
@@ -208,7 +257,7 @@ export default function InventarioPage() {
 
                 return (
                   <>
-                    {/* Fila agrupada (resumen) */}
+                    {/* Fila agrupada */}
                     <tr key={key} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">{grupo.producto_nombre}</div>
@@ -232,35 +281,30 @@ export default function InventarioPage() {
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                               </svg>
-                              Ocultar Detalles
+                              Ocultar
                             </>
                           ) : (
                             <>
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
-                              Ver Detalles ({grupo.lotes.length} lotes)
+                              Ver Detalles ({grupo.lotes.length})
                             </>
                           )}
                         </button>
                       </td>
                     </tr>
 
-                    {/* Detalles expandidos (lotes individuales) */}
+                    {/* Detalles expandidos */}
                     {expandido && (
                       <tr key={`${key}-detalles`}>
                         <td colSpan="4" className="px-6 py-4 bg-gray-50">
                           <div className="pl-8">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                              </svg>
-                              Detalle por fecha de vencimiento:
-                            </h4>
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3">📋 Detalle por lote:</h4>
                             <table className="min-w-full divide-y divide-gray-300">
                               <thead className="bg-gray-100">
                                 <tr>
-                                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">Fecha de Vencimiento</th>
+                                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">Vencimiento</th>
                                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">Cantidad</th>
                                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">Estado</th>
                                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">Acciones</th>
@@ -273,25 +317,13 @@ export default function InventarioPage() {
 
                                   return (
                                     <tr key={lote.id} className={
-                                      vencido
-                                        ? 'bg-red-50'
-                                        : proximoVencer
-                                        ? 'bg-yellow-50'
-                                        : 'bg-white'
+                                      vencido ? 'bg-red-50' : proximoVencer ? 'bg-yellow-50' : 'bg-white'
                                     }>
                                       <td className="px-4 py-3 text-sm">
                                         <span className={
-                                          vencido
-                                            ? 'text-red-600 font-semibold'
-                                            : proximoVencer
-                                            ? 'text-yellow-600 font-semibold'
-                                            : 'text-gray-700'
+                                          vencido ? 'text-red-600 font-semibold' : proximoVencer ? 'text-yellow-600 font-semibold' : 'text-gray-700'
                                         }>
-                                          {new Date(lote.fecha_vencimiento).toLocaleDateString('es-PE', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric'
-                                          })}
+                                          {new Date(lote.fecha_vencimiento).toLocaleDateString('es-PE')}
                                         </span>
                                       </td>
                                       <td className="px-4 py-3 text-sm font-bold text-gray-900">
@@ -312,25 +344,27 @@ export default function InventarioPage() {
                                           </span>
                                         )}
                                       </td>
-                                      <td className="px-4 py-3 text-sm">
+                                      <td className="px-4 py-3 text-sm space-x-2">
+                                        <button
+                                          onClick={() => {
+                                            setLoteEditar(lote)
+                                            setNuevaCantidad(lote.cantidad)
+                                            setMostrarEditarCantidad(true)
+                                          }}
+                                          className="text-blue-600 hover:text-blue-900 font-medium"
+                                        >
+                                          ✏️ Editar
+                                        </button>
                                         <button
                                           onClick={() => {
                                             setLoteSeleccionado(lote)
                                             setCantidadTraspaso(lote.cantidad)
-                                            // Determinar ubicación destino
-                                            if (lote.ubicacion === 'almacen') {
-                                              setUbicacionDestino('mostrador1')
-                                            } else {
-                                              setUbicacionDestino('almacen')
-                                            }
+                                            setUbicacionDestino(lote.ubicacion === 'almacen' ? 'mostrador1' : 'almacen')
                                             setMostrarTraspaso(true)
                                           }}
-                                          className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-900 font-medium"
+                                          className="text-primary-600 hover:text-primary-900 font-medium"
                                         >
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                          </svg>
-                                          Traspasar
+                                          🔄 Traspasar
                                         </button>
                                       </td>
                                     </tr>
@@ -350,21 +384,88 @@ export default function InventarioPage() {
 
           {inventarioFiltrado.length === 0 && (
             <div className="text-center py-12 text-gray-500">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
-              <p className="mt-2">No hay productos en esta ubicación</p>
+              No hay productos en esta ubicación
             </div>
           )}
         </div>
 
-        {/* Modal de traspaso */}
+        {/* Modal Editar Cantidad */}
+        {mostrarEditarCantidad && loteEditar && (
+          <div className="fixed z-10 inset-0 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setMostrarEditarCantidad(false)}></div>
+
+              <div className="inline-block bg-white rounded-lg px-6 py-6 shadow-xl transform transition-all sm:max-w-lg sm:w-full">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-blue-100 rounded-full p-3">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900">Editar Cantidad</h3>
+                </div>
+
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-2 text-sm">
+                  <p><strong>Producto:</strong> {loteEditar.productos?.nombre}</p>
+                  <p><strong>Ubicación:</strong> 
+                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getColorUbicacion(loteEditar.ubicacion)}`}>
+                      {getNombreUbicacion(loteEditar.ubicacion)}
+                    </span>
+                  </p>
+                  <p><strong>Vencimiento:</strong> {new Date(loteEditar.fecha_vencimiento).toLocaleDateString('es-PE')}</p>
+                  <p><strong>Cantidad actual:</strong> <span className="font-bold">{loteEditar.cantidad}</span></p>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nueva cantidad *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={nuevaCantidad}
+                    onChange={(e) => setNuevaCantidad(parseInt(e.target.value) || 0)}
+                    className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  {nuevaCantidad !== loteEditar.cantidad && (
+                    <p className="mt-2 text-sm">
+                      {nuevaCantidad > loteEditar.cantidad ? (
+                        <span className="text-green-600">
+                          +{nuevaCantidad - loteEditar.cantidad} unidades (agregando)
+                        </span>
+                      ) : (
+                        <span className="text-red-600">
+                          -{loteEditar.cantidad - nuevaCantidad} unidades (removiendo)
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={guardarCantidad}
+                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium"
+                  >
+                    Guardar Cambios
+                  </button>
+                  <button
+                    onClick={() => setMostrarEditarCantidad(false)}
+                    className="flex-1 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-50 font-medium"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Traspaso */}
         {mostrarTraspaso && loteSeleccionado && (
           <div className="fixed z-10 inset-0 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
               <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setMostrarTraspaso(false)}></div>
 
-              <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+              <div className="inline-block bg-white rounded-lg px-6 py-6 shadow-xl transform transition-all sm:max-w-lg sm:w-full">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="bg-primary-100 rounded-full p-3">
                     <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -373,16 +474,15 @@ export default function InventarioPage() {
                   </div>
                   <h3 className="text-lg font-medium text-gray-900">Traspasar Inventario</h3>
                 </div>
-                
+
                 <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-2 text-sm">
-                  <p><strong className="text-gray-700">Producto:</strong> <span className="text-gray-900">{loteSeleccionado.productos?.nombre}</span></p>
-                  <p><strong className="text-gray-700">Ubicación actual:</strong> 
+                  <p><strong>Producto:</strong> {loteSeleccionado.productos?.nombre}</p>
+                  <p><strong>Ubicación actual:</strong> 
                     <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getColorUbicacion(loteSeleccionado.ubicacion)}`}>
                       {getNombreUbicacion(loteSeleccionado.ubicacion)}
                     </span>
                   </p>
-                  <p><strong className="text-gray-700">Cantidad disponible:</strong> <span className="font-bold text-gray-900">{loteSeleccionado.cantidad}</span></p>
-                  <p><strong className="text-gray-700">Vencimiento:</strong> <span className="text-gray-900">{new Date(loteSeleccionado.fecha_vencimiento).toLocaleDateString('es-PE')}</span></p>
+                  <p><strong>Cantidad disponible:</strong> {loteSeleccionado.cantidad}</p>
                 </div>
 
                 <div className="mb-4">
@@ -420,7 +520,7 @@ export default function InventarioPage() {
                     onClick={traspasar}
                     className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 font-medium"
                   >
-                    Confirmar Traspaso
+                    Confirmar
                   </button>
                   <button
                     onClick={() => setMostrarTraspaso(false)}
